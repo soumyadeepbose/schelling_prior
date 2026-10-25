@@ -3,6 +3,16 @@ __pycache__/
 .pytest_cache/
 results/*
 !results/assets/
+# analysis JSONs are committed; raw readouts and activations (*.parquet, *.npy) stay out
+!results/qwen3-32b/
+results/qwen3-32b/*
+!results/qwen3-32b/*.json
+!results/qwen3-32b/phase1/
+results/qwen3-32b/phase1/*
+!results/qwen3-32b/phase1/analysis.json
+!results/qwen3-32b/phase2/
+results/qwen3-32b/phase2/*
+!results/qwen3-32b/phase2/analysis.json
 *.npy
 *.parquet
 # project brief: kept local only

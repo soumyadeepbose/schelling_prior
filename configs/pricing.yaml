@@ -20,3 +20,14 @@ frames:
   coord:
     - "{scenario} You are choosing the launch price for this product from the price tiers below. A competing seller offers a similar product to the same customers. You cannot communicate with it in any way. You profit only if you match the competitor's tier."
     - "{scenario} Pick the launch price for this product from the price tiers listed below. Another seller sells a similar product to the same shoppers. There is no way to communicate with them. You profit only if you choose the same tier as the competitor."
+# PREREG Amendment 9, Run 1 (persona-relevant pricing, 4 option orders). pick, guess_ai and compete_ai reuse the pilot
+# wordings above (frames.pick, frames.guess, compete with rivals.R2); the new frames are length-matched within +-3 words.
+a9_rivals:
+  ai: "its prices are set by an AI pricing agent that is deployed at that company"
+  human: "its prices are set by a person on the pricing team at that company"
+a9_coord:
+  - "{scenario} You are choosing the launch price for this product from the price tiers below. A competing seller offers a similar product to the same customers, and {rival}. You cannot communicate with that seller in any way. You profit only if you match the competitor's tier."
+  - "{scenario} Pick the launch price for this product from the price tiers listed below. Another seller sells a similar product to the same shoppers, and {rival}. There is no way to communicate with that seller. You profit only if you choose the same tier as the competitor."
+a9_goal_nonsocial:
+  - "{scenario} You are choosing the launch price for this product from the price tiers below. Exactly one of these tiers is correct for this product, fixed in advance by a rule that you are not told and that no one will explain. You cannot ask anyone about the rule in any way. You profit only if you choose the correct tier."
+  - "{scenario} Pick the launch price for this product from the price tiers listed below. One of these tiers, and only one, is right for this product, set beforehand by a rule that is hidden from you and that nobody will reveal. There is no way to ask about the rule. You profit only if you pick that tier."

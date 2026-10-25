@@ -1519,3 +1519,348 @@ def amend8bc(part: str = "b"):
     rep = fn.remote()
     pathlib.Path(f"results/qwen3-32b/{name}").write_text(json.dumps(rep))
     print("saved")
+
+
+# ------------------------------------------------------------------ PREREG Amendment 9
+A9 = f"{RESULTS}/qwen3-32b/amend9"
+
+
+@app.function(image=gpu_image, gpu="H100", volumes={WEIGHTS: weights_vol, RESULTS: results_vol}, secrets=[hf_secret],
+              timeout=3600)
+def a9_pricing_remote(n_gof: int = 24):
+    """Run 1: 9 agents x 30 scenarios x 6 frames x 4 orders x 2 x 2 paraphrases, layer-32 residuals, readout audit."""
+    import json
+    import pathlib
+    import random
+    import time
+
+    import torch
+
+    from src import pricing, run
+    from src.readout_hf import Scorer
+
+    out = pathlib.Path(f"{A9}/pricing")
+    out.mkdir(parents=True, exist_ok=True)
+    axis = torch.load(f"{AXIS_DIR}/assistant_axis.pt", map_location="cpu", weights_only=False)
+    axis = axis["axis"] if isinstance(axis, dict) else axis
+    t = time.time()
+    model, tok = run.load_model(f"{WEIGHTS}/Qwen/Qwen3-32B")
+    load_s = time.time() - t
+    sc = Scorer(model, tok, max_batch_tokens=8192)
+    sel = run.load_personas(pricing.load_cfg()["agents"])
+    cells = pricing.build_cells_a9({k: v["prompts"] for k, v in sel.items()})
+    meta = {"model": "Qwen3-32B", "engine": "hf", "layer_cfg": "", "intervention": "none", "dose": 0.0}
+    tp = run.score_cells(sc, cells, meta, out / "dist_shard0.parquet", strata={k: v["stratum"] for k, v in sel.items()},
+                         axis=axis, act_layer=32)
+    results_vol.commit()
+    gof = run.gof_gate(sc, random.Random(900).sample(cells, n_gof), seed=9000)
+    summary = {"load_s": load_s, "throughput": tp, "gof": run.summarize_gof(gof), "total_s": time.time() - t}
+    (out / "summary.json").write_text(json.dumps(summary, indent=1))
+    (out / "gof.json").write_text(json.dumps(gof))
+    results_vol.commit()
+    return summary
+
+
+@app.function(image=gpu_image, gpu="H100", volumes={WEIGHTS: weights_vol, RESULTS: results_vol}, secrets=[hf_secret],
+              timeout=3600)
+def a9_pricing_complete_remote(recapture: bool = True, n_gof: int = 24):
+    """Run 1 completion after the workspace stopped the first job at 24,576 / 25,920 cells (parquet saved, residuals and
+    audit not): score the missing cells with residuals (dist_shard1), recapture layer-32 residuals for the shard-0 rows
+    in row order (pass 1 only), and run the readout audit."""
+    import json
+    import pathlib
+    import random
+    import time
+
+    import numpy as np
+    import pandas as pd
+    import torch
+
+    from src import pricing, run
+    from src.prompts import render
+    from src.readout_hf import Item, Scorer
+
+    out = pathlib.Path(f"{A9}/pricing")
+    key = lambda c: (c.persona, c.persona_par, c.frame, c.frame_par, c.instance_id, c.order_id)
+    sel = run.load_personas(pricing.load_cfg()["agents"])
+    cells = pricing.build_cells_a9({k: v["prompts"] for k, v in sel.items()})
+    d0 = pd.read_parquet(out / "dist_shard0.parquet", columns=["persona", "persona_par", "frame", "frame_par", "instance_id", "order_id"])
+    done = list(map(tuple, d0.itertuples(index=False)))
+    by_key = {key(c): c for c in cells}
+    done_set = set(done)
+    missing = [c for c in cells if key(c) not in done_set]
+    axis = torch.load(f"{AXIS_DIR}/assistant_axis.pt", map_location="cpu", weights_only=False)
+    axis = axis["axis"] if isinstance(axis, dict) else axis
+    t = time.time()
+    model, tok = run.load_model(f"{WEIGHTS}/Qwen/Qwen3-32B")
+    summary = {"load_s": time.time() - t, "n_done": len(done), "n_missing": len(missing)}
+    sc = Scorer(model, tok, max_batch_tokens=8192)
+    meta = {"model": "Qwen3-32B", "engine": "hf", "layer_cfg": "", "intervention": "none", "dose": 0.0}
+    if missing and not (out / "dist_shard1.parquet").exists():
+        summary["throughput"] = run.score_cells(sc, missing, meta, out / "dist_shard1.parquet",
+                                                strata={k: v["stratum"] for k, v in sel.items()}, axis=axis, act_layer=32)
+        results_vol.commit()
+    if recapture and not (out / "dist_shard0_l32.npy").exists():
+        t0 = time.time()
+        acts = []
+        for s in range(0, len(done), 2048):
+            items = [Item(*render(tok, by_key[k].system, by_key[k].user), by_key[k].options) for k in done[s: s + 2048]]
+            acts += [r[32].astype(np.float16) for r in sc.capture(items, [32])]
+            print(f"  recapture {s + len(items)}/{len(done)}, {time.time() - t0:.0f}s", flush=True)
+        np.save(out / "dist_shard0_l32.npy", np.stack(acts))
+        summary["recapture_s"] = time.time() - t0
+        results_vol.commit()
+    gof = run.gof_gate(sc, random.Random(900).sample(cells, n_gof), seed=9000)
+    summary["gof"] = run.summarize_gof(gof)
+    summary["total_s"] = time.time() - t
+    (out / "summary.json").write_text(json.dumps(summary, indent=1))
+    (out / "gof.json").write_text(json.dumps(gof))
+    results_vol.commit()
+    return summary
+
+
+@app.local_entrypoint()
+def a9_pricing_complete(recapture: bool = True):
+    import json
+
+    print(json.dumps(a9_pricing_complete_remote.remote(recapture), indent=1))
+
+
+@app.local_entrypoint()
+def a9_pricing():
+    import json
+
+    print(json.dumps(a9_pricing_remote.remote(), indent=1))
+
+
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=8, memory=32768, timeout=3600)
+def a9_directions_remote():
+    import json
+    import os
+
+    import numpy as np
+
+    from src import amend9
+
+    os.makedirs(f"{A9}/ablate", exist_ok=True)
+    d = amend9.sigma_directions(f"{RESULTS}/qwen3-32b/phase2")
+    np.savez(f"{A9}/ablate/directions.npz", random=d["random"])
+    info = {k: (v.tolist() if hasattr(v, "tolist") else v) for k, v in d.items() if k != "random"}
+    with open(f"{A9}/ablate/directions.json", "w") as f:
+        json.dump(info, f, indent=1)
+    results_vol.commit()
+    return info
+
+
+@app.local_entrypoint()
+def a9_directions():
+    import json
+
+    print(json.dumps(a9_directions_remote.remote(), indent=1))
+
+
+@app.function(image=gpu_image, gpu="H100", volumes={WEIGHTS: weights_vol, RESULTS: results_vol}, secrets=[hf_secret],
+              timeout=2 * 3600)
+def a9_attn_ablate_remote():
+    """Run 4 (4a eager persona-attention masses; r_l; 4b matched knockout, controls, converse) and Run 6 (3 Sigma^{1/2}z
+    directional ablations over layers 20-40 in the coord frame), one model load."""
+    import json
+    import os
+    import time
+
+    import numpy as np
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    import torch
+
+    from src import amend6, amend9, run
+    from src.prompts import render
+    from src.readout_hf import Item, Scorer
+
+    from transformers import AutoTokenizer
+
+    os.makedirs(f"{A9}/attn", exist_ok=True)
+    t = time.time()
+    tok = AutoTokenizer.from_pretrained(f"{WEIGHTS}/Qwen/Qwen3-32B")   # spans are checked before the model loads
+
+    def write(path, recs_iter):
+        writer = None
+        for recs in recs_iter:
+            tbl = pa.Table.from_pylist(recs)
+            writer = writer or pq.ParquetWriter(path, tbl.schema)
+            writer.write_table(tbl)
+        writer.close()
+
+    # ---------------- Run 4a: eager attention masses
+    cs = amend9.run4_cells()
+    items, spans, meta = [], [], []
+    for c in cs:
+        ids, P = render(tok, c.system, c.user)
+        sp = amend9.spans(tok, c.system, c.user, ids)
+        items.append(Item(ids, P, c.options))
+        spans.append({"keys": {k: sp[k] for k in amend9.SPAN_NAMES}, "user_q": sp["user"], **sp})
+        meta.append({"persona": c.persona, "frame": c.frame, "family": c.family, "instance_id": c.instance_id,
+                     "order_id": c.order_id, "n_tokens": len(ids), "n_persona": len(sp["persona"]),
+                     "n_user": len(sp["user"]), "n_c_user": len(sp["c_user"]), "n_c_template": len(sp["c_template"])})
+    model, tok = run.load_model(f"{WEIGHTS}/Qwen/Qwen3-32B")
+    summary = {"load_s": time.time() - t}
+    sc = Scorer(model, tok, max_batch_tokens=8192)
+    L = model.config.num_hidden_layers
+    t0 = time.time()
+    md = pd.DataFrame(meta)
+    if os.path.exists(f"{A9}/attn/4a_mass.npy"):     # resume: 4a already saved
+        mass = np.load(f"{A9}/attn/4a_mass.npy")
+    else:
+        mass = np.zeros((len(items), L, len(amend9.SPAN_NAMES), 2), np.float32)
+        for s in range(0, len(items), 1024):
+            mass[s: s + 1024] = sc.attention_mass(items[s: s + 1024], spans[s: s + 1024])
+            print(f"  4a {min(s + 1024, len(items))}/{len(items)}, {time.time() - t0:.0f}s", flush=True)
+        summary["4a_seconds"] = time.time() - t0
+        np.save(f"{A9}/attn/4a_mass.npy", mass)
+        md.to_parquet(f"{A9}/attn/4a_meta.parquet")
+    pi = amend9.SPAN_NAMES.index("persona")
+    dec = mass[:, :, pi, 0]
+    r = dec[(md.frame == "coord").to_numpy()].mean(0) / dec[(md.frame == "pick").to_numpy()].mean(0)
+    np.save(f"{A9}/attn/r.npy", r)
+    summary["r"] = r.tolist()
+    results_vol.commit()
+
+    # ---------------- Run 4b: matched knockout (standard path, SDPA, prefix cache refilled without eager)
+    sc._prefix_cache.clear()
+    logr = torch.tensor(np.log(r), dtype=torch.float32, device="cuda")
+    by = {fr: [k for k, m in enumerate(meta) if m["frame"] == fr] for fr in ("pick", "coord")}
+    conds = [("knock_r", "pick", "persona", 1.0), ("knock_r2", "pick", "persona", 2.0),
+             ("ctrl_user", "pick", "c_user", 1.0), ("ctrl_template", "pick", "c_template", 1.0),
+             ("restore", "coord", "persona", -1.0)]
+
+    def gen_4b(name, fr, span, dose):
+        sc.key_bias = dose * logr
+        idx = by[fr]
+        for s in range(0, len(idx), 1024):
+            part = idx[s: s + 1024]
+            its = [Item(items[k].prompt_ids, items[k].prefix_len, items[k].options, key=k,
+                        bias_cols=spans[k][span]) for k in part]
+            res = sc.score(its)
+            print(f"  4b {name} {s + len(part)}/{len(idx)}, {time.time() - t0:.0f}s", flush=True)
+            yield [{**{x: meta[k][x] for x in ("persona", "frame", "family", "instance_id", "order_id")},
+                    "condition": name, "dose": dose, "logprobs": r_.logprobs.tolist(), "offmenu": r_.offmenu}
+                   for k, r_ in zip(part, res)]
+
+    t0 = time.time()
+    for cd in conds:
+        path = f"{A9}/attn/4b_{cd[0]}.parquet"
+        if not os.path.exists(path):
+            write(path, gen_4b(*cd))
+            results_vol.commit()
+    sc.key_bias = None
+    summary["4b_seconds"] = time.time() - t0
+
+    # ---------------- Run 6: Sigma^{1/2}z directional ablations, coord frame, layers 20-40, every position
+    os.makedirs(f"{A9}/ablate", exist_ok=True)
+    V = torch.tensor(np.load(f"{A9}/ablate/directions.npz")["random"], device="cuda")
+    cs2 = amend6.cells(("coord",), "B")
+    items2 = [Item(*render(tok, c.system, c.user), c.options) for c in cs2]
+
+    def gen_6(k):
+        v = V[k]
+
+        def ablate(mod, inp, out, v=v):
+            h = out[0] if isinstance(out, tuple) else out
+            vv = v.to(h.dtype)
+            h = h - (h @ vv)[..., None] * vv
+            return (h, *out[1:]) if isinstance(out, tuple) else h
+
+        sc.cache_tag = ("a9_ablate", k)
+        sc._prefix_cache.clear()
+        hooks = [model.model.layers[l].register_forward_hook(ablate) for l in range(20, 41)]
+        try:
+            for s in range(0, len(cs2), 1024):
+                part = list(range(s, min(s + 1024, len(cs2))))
+                res = sc.score([items2[j] for j in part])
+                print(f"  ablate r{k} {part[-1] + 1}/{len(cs2)}, {time.time() - t0:.0f}s", flush=True)
+                yield [{"persona": cs2[j].persona, "frame": cs2[j].frame, "family": cs2[j].family,
+                        "instance_id": cs2[j].instance_id, "order_id": cs2[j].order_id, "condition": f"ablate_r{k}",
+                        "dose": 1.0, "logprobs": r_.logprobs.tolist(), "offmenu": r_.offmenu} for j, r_ in zip(part, res)]
+        finally:
+            for h in hooks:
+                h.remove()
+
+    t0 = time.time()
+    for k in range(len(V)):
+        path = f"{A9}/ablate/random_ablate_r{k}.parquet"
+        if not os.path.exists(path):
+            write(path, gen_6(k))
+            results_vol.commit()
+    summary["6_seconds"] = time.time() - t0
+    summary["total_s"] = time.time() - t
+    with open(f"{A9}/attn_ablate_summary.json", "w") as f:
+        json.dump(summary, f, indent=1)
+    results_vol.commit()
+    return summary
+
+
+@app.local_entrypoint()
+def a9_attn_ablate():
+    import json
+
+    print(json.dumps(a9_attn_ablate_remote.remote(), indent=1))
+
+
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=8, memory=32768, timeout=2 * 3600)
+def a9_analyze_remote(part: str):
+    import json
+
+    import numpy as np
+
+    base = f"{RESULTS}/qwen3-32b"
+    if part == "pricing":
+        from src.analysis_amend9_pricing import analyze
+
+        rep = analyze(f"{A9}/pricing", np.load(f"{A6}/directions.npz")["ghat"])
+        name = "amend9_run1_pricing.json"
+    elif part == "run4":
+        from src.analysis_amend9_attn import run4
+
+        rep, name = run4(base), "amend9_run4_attention.json"
+    else:
+        from src.analysis_amend9_attn import run6
+
+        rep, name = run6(base), "amend9_run6_ablation_control.json"
+    with open(f"{base}/{name}", "w") as f:
+        json.dump(rep, f, default=float)
+    results_vol.commit()
+    return name, json.loads(json.dumps(rep, default=float))
+
+
+@app.local_entrypoint()
+def a9_analyze(part: str = "pricing"):
+    import json
+    import pathlib
+
+    name, rep = a9_analyze_remote.remote(part)
+    pathlib.Path(f"results/qwen3-32b/{name}").write_text(json.dumps(rep))
+    print("saved", name)
+
+
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=8, memory=65536, timeout=2 * 3600)
+def a9_addon_remote():
+    import json
+
+    from src.analysis_amend9_addon import analyze
+
+    base = f"{RESULTS}/qwen3-32b"
+    rep = analyze(base)
+    with open(f"{base}/amend9_addon.json", "w") as f:
+        json.dump(rep, f, default=float)
+    results_vol.commit()
+    return json.loads(json.dumps(rep, default=float))
+
+
+@app.local_entrypoint()
+def a9_addon():
+    import json
+    import pathlib
+
+    pathlib.Path("results/qwen3-32b/amend9_addon.json").write_text(json.dumps(a9_addon_remote.remote()))
+    print("saved")

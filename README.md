@@ -8,11 +8,13 @@ We give Qwen3-32B 23 different personas (stratified roles, game theorists, busin
 
 ## FINDINGS (in brief)
 
-- **Telling agents to coordinate makes different personas agree.** Agreement rises from Ā = 0.78 to 0.92, removing 62% of between-persona disagreement, and no single persona becomes more decisive.
-- **It is goal framing, not AI coordination.** A human partner gives the same convergence as an AI partner, and so does a goal with no partner at all ("one option is correct by a hidden rule"). Both are equivalent within ±0.03. "Mismatch your partner" homogenizes personas just as much, describing the partner as an *exact copy of you* makes no difference, and a merely longer prompt explains about 17%.
-- **Coordination pulls personas toward the population's common choice.** Coordinating moves each persona toward its guess of what another agent picks (+0.46), but just as much toward other personas' guesses (+0.45); the shared guess and the population-mean pick are nearly the same target. Mismatching moves away (−0.10).
+- **Telling agents to coordinate makes different personas agree.** Agreement rises from Ā = 0.78 to 0.92, removing 62% of between-persona disagreement, and no single persona becomes more decisive. In greedy outputs the effect is smaller: the chance that two personas give the same answer rises from 0.40 to 0.50.
+- **It is coordination framing, not AI coordination.** A human partner gives the same convergence as an AI partner. A goal with no partner at all ("one option is correct by a hidden rule") matches it only on raw agreement: it mostly flattens distributions and produces no convergence in greedy outputs. "Mismatch your partner" homogenizes personas just as much, describing the partner as an *exact copy of you* makes no difference, and a merely longer prompt explains about 17%.
+- **Where the persona should matter, it holds on.** In a pricing task with randomized option order, coordinating removes 44% of the disagreement between premium, sustainable and discount sellers (62% on game menus). They drift toward the middle tiers but never swap order, and the hidden-rule goal removes only 15%. Competition lowers prices by 0.43 tiers in every option order.
+- **Coordination pulls personas toward the default model's answer.** Under coordination, the population's average choice is closer to what the unprompted model picks *when coordinating* (cosine 0.97) than to the population's own plain picks (0.90). Each persona moves toward the shared guess (+0.46) no more than toward other personas' guesses; mismatching moves away (−0.10).
 - **In the activations, a "there is a target answer" direction ĝ appears from the first layers.** Every goal-laden framing (AI partner, human partner, no partner) pushes all personas along ĝ about equally, and it is decodable from layer 0. Match versus mismatch is decodable from layer 8; only goal-dependent *movement* along ĝ emerges late, and only for one prompt wording.
-- **ĝ is a near-perfect detector but not a cause.** It separates goal-laden prompts from plain picks with AUROC ≥ 0.999 (0.9997 for every persona on the original partner frames). Steering along it, patching in the full coordination activation at layer 32, or adding the mean coordination shift moves less than 2% of the way to coordination. Ablating ĝ in layers 20–40 changes the direction of the shift but not the convergence.
+- **ĝ is a near-perfect detector but not a cause.** It separates goal-laden prompts from plain picks with AUROC ≥ 0.999 (0.9997 for every persona on the original partner frames). Steering along it, patching in the full coordination activation at layer 32, or adding the mean coordination shift moves less than 2% of the way to coordination. Ablating ĝ in layers 20–40 does not undo convergence, and its effect on the direction of the shift is not distinguishable from ablating random directions of similar variance.
+- **Part of the mechanism is that the answer stops reading the persona.** Under goal-laden framings the answer position attends 21% less to the persona prompt, though a merely longer prompt does most of that. Cutting persona attention by the same amount in a plain pick reproduces 14% of the convergence (control spans do nothing), and restoring it under coordination undoes about 19%. That is a real but minor share.
 - **The convergence point is model-specific.** Under coordination the 32B personas converge on each other, but Qwen3-14B does not move toward them (cosine 0.85 in both frames).
 
 ## Method in brief
@@ -21,7 +23,7 @@ We give Qwen3-32B 23 different personas (stratified roles, game theorists, busin
 |---|---|
 | **Readout** | Teacher-forced log P(option + end-of-turn), log-sum-exp over a fixed set of surface variants (case, quotes, trailing period, leading space). Off-menu mass is reported. A prefix-cached token trie makes it about 40 prompts/s on one H100. Validated against uncached forwards (fp32 exact; bf16 noise quantified) and against sampled answers. |
 | **Design** | 26 personas × 5 game families × frames (pick, guess, coordinate, anti, partner descriptions, human partner, hidden-rule goal, length-matched pick, no persona) × 4 option orders × 2×2 paraphrases. Cross-order U-statistic estimators. Two-level bootstrap over personas within stratum and instances within family. Holm correction. |
-| **Interpretability** | Decision-position residuals saved for every prompt. Assistant Axis (Lu et al.). Generic-AI direction ĝ with split-half estimation. Activation steering at decision and continuation positions with prefix reuse, verified equivalent to the reference path. Activation patching and directional ablation as positive controls. Cross-model baseline on Qwen3-14B. |
+| **Interpretability** | Decision-position residuals saved for every prompt. Assistant Axis (Lu et al.). Generic-AI direction ĝ with split-half estimation. Activation steering at decision and continuation positions with prefix reuse, verified equivalent to the reference path. Activation patching and directional ablation as positive controls, with random-direction controls. Per-layer attention mass to the persona span (eager attention) and matched attention knockouts via an additive bias on chosen keys. Cross-model baseline on Qwen3-14B. |
 
 ## Repository layout
 
@@ -55,6 +57,9 @@ modal run modal_app.py::c1_run                     # patching / ablation / mean-
 modal run modal_app.py::c2_run                     # Qwen3-14B cross-model baseline
 modal run modal_app.py::amend8a                    # reviewer-round analyses on cached data, then ::amend8a_act
 modal run modal_app.py::amend8bc --part b          # new-frame analyses (--part c for the controls)
+modal run modal_app.py::a9_pricing                 # persona-relevant pricing, 4 option orders
+modal run modal_app.py::a9_attn_ablate             # persona attention + matched knockout; random-direction ablations
+modal run modal_app.py::a9_analyze --part pricing  # also --part run4, --part run6
 python scripts/make_readme_figures.py              # figures from results/qwen3-32b/*.json
 ```
 

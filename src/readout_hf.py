@@ -42,6 +42,7 @@ class Item:
     prefix_len: int
     options: list[str]
     key: object = None  # caller's handle, returned untouched
+    bias_cols: list[int] | None = None  # prompt positions whose keys get Scorer.key_bias (Amendment 9 attention bias)
 
 
 @dataclass
@@ -104,6 +105,9 @@ class Scorer:
         self.decision_delta: dict[int, torch.Tensor] | None = None  # layer -> added to the decision-position residual
         self.steer: tuple[int, torch.Tensor] | None = None  # (layer, vector) at the decision position and every option-
                                                             # continuation position (reference path for steering)
+        self.key_bias: torch.Tensor | None = None  # (n_layers,) added to the attention logits of every query after the
+                                                   # system block on the keys at Item.bias_cols; the system block is unbiased
+        self._cols: torch.Tensor | None = None
         self.pad_id = tok.pad_token_id if tok.pad_token_id is not None else self.eot
 
     # ------------------------------------------------------------ helpers
@@ -160,11 +164,120 @@ class Scorer:
                 width = max(width, widths[j])
             if cur:
                 batches.append(cur)
-            for batch in batches:
-                outs = self._score_batch(prefix, [items[idx[b]] for b in batch], [prepared[b] for b in batch], capture_layers)
-                for b, o in zip(batch, outs):
-                    results[idx[b]] = o
+            hooks = self._bias_hooks()
+            try:
+                for batch in batches:
+                    bitems = [items[idx[b]] for b in batch]
+                    self._cols = self._bias_cols(bitems)
+                    outs = self._score_batch(prefix, bitems, [prepared[b] for b in batch], capture_layers)
+                    for b, o in zip(batch, outs):
+                        results[idx[b]] = o
+            finally:
+                self._cols = None
+                for h in hooks:
+                    h.remove()
         return results  # type: ignore[return-value]
+
+    def _bias_cols(self, items):
+        if self.key_bias is None:
+            return None
+        cols = torch.zeros((len(items), max(len(it.prompt_ids) for it in items)), dtype=torch.float32)
+        for b, it in enumerate(items):
+            if it.bias_cols:
+                cols[b, it.bias_cols] = 1.0
+        return cols.to(self.device)
+
+    def _bias_hooks(self):
+        """Per-layer key bias through the additive mask. Prompt position k is mask column k in pass 1 and pass 2 (prefix
+        columns first, then the rest of the prompt left-aligned); the cached system block is computed without a mask."""
+        if self.key_bias is None:
+            return []
+
+        def make(l):
+            def pre(mod, args, kwargs):
+                m = kwargs.get("attention_mask")
+                if m is None or self._cols is None:
+                    return None
+                K = m.shape[-1]
+                c = self._cols[:, :K]
+                if c.shape[1] < K:
+                    c = torch.nn.functional.pad(c, (0, K - c.shape[1]))
+                kwargs["attention_mask"] = m + (c * self.key_bias[l]).to(m.dtype)[:, None, None, :]
+                return args, kwargs
+            return pre
+
+        return [layer.self_attn.register_forward_pre_hook(make(l), with_kwargs=True)
+                for l, layer in enumerate(self.model.model.layers)]
+
+    @torch.no_grad()
+    def attention_mass(self, items: list[Item], spans: list[dict]) -> np.ndarray:
+        """Eager-attention measurement (pass 1 over the cached system block). spans[i] = {"keys": {name: [prompt
+        positions]}, "user_q": [prompt positions]}. Returns (N, n_layers, n_spans, 2): attention mass on each key span,
+        summed over the span and averaged over heads, from the decision position (last prompt token) [..., 0] and averaged
+        over the user_q query positions [..., 1]. Span names are sorted."""
+        names = sorted(spans[0]["keys"])
+        cfg = self.model.config
+        n_layers = cfg.num_hidden_layers
+        out = np.zeros((len(items), n_layers, len(names), 2), dtype=np.float32)
+        groups: dict[tuple, list[int]] = {}
+        for i, it in enumerate(items):
+            groups.setdefault(tuple(it.prompt_ids[: it.prefix_len]), []).append(i)
+        old = cfg._attn_implementation
+        cfg._attn_implementation = "eager"
+        cur: dict = {}
+
+        def make(l):
+            def hook(mod, inp, o):
+                if not cur.get("on"):        # the system-block forward that fills the prefix cache
+                    return
+                w = o[1].float().mean(1)                                     # (B, Q, K)
+                K = w.shape[-1]
+                per_q = torch.einsum("bqk,bsk->bqs", w, cur["km"][..., :K])  # (B, Q, S)
+                cur["res"][:, l, :, 0] = per_q[torch.arange(w.shape[0], device=w.device), cur["dec"]]
+                cur["res"][:, l, :, 1] = torch.einsum("bqs,bq->bs", per_q, cur["uq"][:, : w.shape[1]])
+            return hook
+
+        hooks = [layer.self_attn.register_forward_hook(make(l)) for l, layer in enumerate(self.model.model.layers)]
+        try:
+            for prefix, idx in groups.items():
+                P = len(prefix)
+                order = sorted(idx, key=lambda i: len(items[i].prompt_ids))
+                batches, cur_b, width = [], [], 0
+                for i in order:
+                    w_ = len(items[i].prompt_ids) - P
+                    if cur_b and (len(cur_b) + 1 > self.max_batch_size or max(width, w_) * (len(cur_b) + 1) > self.max_batch_tokens):
+                        batches.append(cur_b)
+                        cur_b, width = [], 0
+                    cur_b.append(i)
+                    width = max(width, w_)
+                if cur_b:
+                    batches.append(cur_b)
+                for batch in batches:
+                    B = len(batch)
+                    Kmax = max(len(items[i].prompt_ids) for i in batch)
+                    km = torch.zeros((B, len(names), Kmax))
+                    uq = torch.zeros((B, Kmax - P))
+                    for b, i in enumerate(batch):
+                        for s_, n_ in enumerate(names):
+                            km[b, s_, spans[i]["keys"][n_]] = 1.0
+                        q = [p_ - P for p_ in spans[i]["user_q"]]
+                        uq[b, q] = 1.0 / len(q)
+                    cur.update(km=km.to(self.device), uq=uq.to(self.device),
+                               dec=torch.tensor([len(items[i].prompt_ids) - 1 - P for i in batch], device=self.device),
+                               res=torch.zeros((B, n_layers, len(names), 2), device=self.device))
+                    if prefix:
+                        self._prefix_kv(prefix)
+                    cur["on"] = True
+                    self._pass1(prefix, [items[i] for i in batch], None)
+                    cur["on"] = False
+                    res = cur["res"].cpu().numpy()
+                    for b, i in enumerate(batch):
+                        out[i] = res[b]
+        finally:
+            cfg._attn_implementation = old
+            for h in hooks:
+                h.remove()
+        return out
 
     def _prepare(self, it: Item):
         trie = _Trie()
