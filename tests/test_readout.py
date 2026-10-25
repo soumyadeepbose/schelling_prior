@@ -244,3 +244,30 @@ def test_uncached_batched_matches_uncached(model, tok, lp_tol):
         a, b = score_uncached_batched(model, tok, it, steer=st, chunk=7), score_uncached(model, tok, it, steer=st)
         for x, y in zip(a, b):
             assert np.allclose(np.array(x), np.array(y), atol=lp_tol)
+
+
+def test_steered_decision_and_replace_modes(model, tok, lp_tol):
+    """(l, v, 'decision') = reference decision_delta; (l, targets, 'replace') = decision_delta of (target - live residual)."""
+    layer = model.config.num_hidden_layers // 2
+    items = [make_item(tok, s, "pick", m) for s in SYSTEMS[:2] for m in MENUS[:2]]
+    for k, it in enumerate(items):
+        it.key = k
+    d = model.config.hidden_size
+    g = torch.Generator().manual_seed(2)
+    v = (torch.randn(d, generator=g) * 0.3).to(model.device)
+    targets = {k: (torch.randn(d, generator=g) * 2.0).to(model.device) for k in range(len(items))}
+    sc = Scorer(model, tok, prune_eps=0.0)
+    fast = sc.score_steered(items, [(layer, v, "decision"), (layer, targets, "replace")])
+    sc.decision_delta = {layer: v}
+    ref_dec = sc.score(items)
+    sc.decision_delta = None
+    live = sc.capture(items, [layer])
+    for i, it in enumerate(items):
+        sc.decision_delta = {layer: targets[i] - torch.tensor(live[i][layer], device=model.device)}
+        ref_rep = sc.score([it])[0]
+        sc.decision_delta = None
+        for a, b in ((fast[i][0], ref_dec[i]), (fast[i][1], ref_rep)):
+            for x, y in zip(a.variant_logprobs, b.variant_logprobs):
+                x, y = np.array(x), np.array(y)
+                ok = y > -40
+                assert np.allclose(x[ok], y[ok], atol=5 * lp_tol), (it.options, x, y)

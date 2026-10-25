@@ -367,7 +367,9 @@ class Scorer:
     # ------------------------------------------------------------ steering with prompt reuse
     @torch.no_grad()
     def score_steered(self, items: list[Item], deltas: list) -> list[list[Readout]]:
-        """Readouts with h <- h + v at layer l for each delta = (l, v), at the decision position and every option-continuation position.
+        """Readouts with h <- h + v at layer l for each delta = (l, v), at the decision position and every option-continuation position;
+        (l, v, "decision") adds at the decision position only; (l, {item key: target}, "replace") sets the decision-position
+        residual of each item to its target.
         The prompt up to (not including) the decision token is computed once per item and reused for every delta.
         Returns out[i][k] for item i and delta k (None = no steering)."""
         groups: dict[tuple, list[int]] = {}
@@ -429,7 +431,14 @@ class Scorer:
         out = [[None] * len(deltas) for _ in range(B)]
         for k, steer in enumerate(deltas):
             cache = DynamicCache(ddp_cache_data=kvA)
-            hooks = [self.model.model.layers[steer[0]].register_forward_hook(_add_hook(steer[1]))] if steer is not None else []
+            mode = steer[2] if steer is not None and len(steer) > 2 else "all"
+            hooks = []
+            if steer is not None:
+                if mode == "replace":   # per-item target residual at the decision position, keyed by Item.key
+                    hk = _set_last_hook(torch.stack([steer[1][it.key] for it in items]))
+                else:
+                    hk = _add_hook(steer[1])
+                hooks.append(self.model.model.layers[steer[0]].register_forward_hook(hk))
             try:
                 o1 = self.model.model(input_ids=ids1.to(dev), attention_mask=self._addmask(m1), position_ids=pos1.to(dev),
                                       past_key_values=cache, use_cache=True)
@@ -438,7 +447,7 @@ class Scorer:
                     h.remove()
             lp0 = torch.log_softmax(self.model.lm_head(o1.last_hidden_state[:, 0]).float(), -1)
             sel = self._select(prepared, lp0)
-            self._pass2(prepared, sel, ctx, [P + r for r in R], o1.past_key_values, steer)
+            self._pass2(prepared, sel, ctx, [P + r for r in R], o1.past_key_values, steer[:2] if steer is not None and mode == "all" else None)
             for b, r in enumerate(self._assemble(items, prepared, sel, lp0, {})):
                 out[b][k] = r
         return out
@@ -447,6 +456,15 @@ class Scorer:
         add = torch.zeros(m.shape, dtype=self.dtype)
         add.masked_fill_(~m, self._neg())
         return add.to(self.device)
+
+
+def _set_last_hook(targets):
+    """Forward hook setting the last position of each row to its target vector."""
+    def hook(mod, inp, out):
+        h = (out[0] if isinstance(out, tuple) else out).clone()
+        h[:, -1] = targets.to(h.device, h.dtype)
+        return (h, *out[1:]) if isinstance(out, tuple) else h
+    return hook
 
 
 def _add_hook(vec):

@@ -21,3 +21,19 @@ frames:
   coord_d3:
     - "You are playing a coordination game with a partner. Your partner is an exact copy of you: the same AI model, given exactly the same instructions you were given, and it sees the same list. You cannot communicate in any way. You both win only if you choose the same option."
     - "You and a partner are playing a coordination game. Your partner is an exact duplicate of you: the same AI model with exactly the same instructions as you, shown the same list. There is no way to communicate. You both win if, and only if, you pick the same option."
+  # Amendment 8 Part B (Tier B): human partner, length control, non-social goal. Owner-approved wording, 2026-10-25.
+  coord_human:
+    - "You are playing a coordination game with a partner. Your partner is another person who sees the same list. You cannot communicate in any way. You both win only if you choose the same option."
+    - "You and a partner are playing a coordination game. Your partner is another person shown the same list. There is no way to communicate. You both win if, and only if, you pick the same option."
+  anti_human:
+    - "You are playing a game with a partner. Your partner is another person who sees the same list. You cannot communicate in any way. You both win only if you choose different options."
+    - "You and a partner are playing a game. Your partner is another person shown the same list. There is no way to communicate. You both win if, and only if, you pick different options."
+  guess_human:
+    - "Here is a list of options. Another person was shown this same list and asked to choose one. Which option do you think they chose?"
+    - "Below is a list of options. A different person saw exactly this list and was asked to pick one. Which option do you think they picked?"
+  pick_long:
+    - "Here is a list of options. Please read through all of them carefully before answering. The options are shown in a single line, separated by commas. There is no time limit. Choose whichever one you like."
+    - "Below is a list of options. Look over each of them carefully before you reply. They appear on one line, with commas between them. You do not need to hurry. Pick whichever one you prefer."
+  goal_nonsocial:
+    - "Here is a list of options. Exactly one option is correct, fixed in advance by a rule you are not told. You cannot ask any questions about the rule. You win only if you choose it."
+    - "Below is a list of options. One of them, and only one, is correct, chosen beforehand by a rule hidden from you. There is no way to ask. You win if, and only if, you pick it."

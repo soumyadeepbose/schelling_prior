@@ -38,7 +38,8 @@ def pytest_collection_modifyitems(config, items):
     skip = pytest.mark.skip(reason="exact equivalence is checked in fp32; bf16 noise is quantified separately")
     exact = {"test_cached_matches_uncached", "test_batched_equals_single_padding_and_positions",
              "test_jacobian_matches_finite_difference",
-             "test_steered_reuse_matches_reference", "test_uncached_batched_matches_uncached"}
+             "test_steered_reuse_matches_reference", "test_uncached_batched_matches_uncached",
+             "test_steered_decision_and_replace_modes"}
     for it in items:
         if it.name in exact:
             it.add_marker(skip)

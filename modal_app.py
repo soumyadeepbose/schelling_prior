@@ -1098,3 +1098,424 @@ def amend7():
     rep = amend7_remote.remote()
     pathlib.Path("results/qwen3-32b/amend7.json").write_text(json.dumps(rep))
     print("saved")
+
+
+# ------------------------------------------------------------------ Amendment 8 Part B (Tier B): human partner, length, non-social goal
+A8B_FRAMES = ["coord_human", "guess_human", "pick_long", "goal_nonsocial"]
+A8B_NONE_FRAMES = ["pick", "guess", "coord", "coord_human", "pick_long"]
+NONE_PERSONA = {"none": {"stratum": "none", "prompts": [""]}}
+
+
+@app.function(image=gpu_image, gpu="H100", volumes={WEIGHTS: weights_vol, RESULTS: results_vol}, secrets=[hf_secret],
+              timeout=4 * 3600)
+def phase2c_shard(personas: list[str], shard: int, include_none: bool = False, n_gof: int = 24):
+    """Tier B: 23 substantive personas in coord_human / guess_human / pick_long / goal_nonsocial (F1-F5) and anti_human
+    (F1, F3); the none persona in pick / guess / coord / coord_human / pick_long. Confirmatory instances, 4 orders, 2x2
+    paraphrases; layer-32 residuals for every prompt."""
+    import json
+    import pathlib
+    import random
+    import time
+
+    import torch
+
+    from src import run
+    from src.analysis_phase2 import pilot_instances
+    from src.readout_hf import Scorer
+
+    out = pathlib.Path(f"{RESULTS}/qwen3-32b/phase2c")
+    out.mkdir(parents=True, exist_ok=True)
+    axis = torch.load(f"{AXIS_DIR}/assistant_axis.pt", map_location="cpu", weights_only=False)
+    axis = axis["axis"] if isinstance(axis, dict) else axis
+    t = time.time()
+    model, tok = run.load_model(f"{WEIGHTS}/Qwen/Qwen3-32B")
+    load_s = time.time() - t
+    sc = Scorer(model, tok, max_batch_tokens=8192)
+    pil = pilot_instances()
+    sel = run.load_personas(personas)
+    fams = ["F1", "F2", "F3", "F4", "F5"]
+    cells = run.phase_cells(sel, fams, A8B_FRAMES, n_orders=4, anti_families=(), exclude_instances=pil)
+    cells += run.phase_cells(sel, ["F1", "F3"], ["anti_human"], n_orders=4, anti_families=(), exclude_instances=pil)
+    strata = {k: v["stratum"] for k, v in sel.items()}
+    if include_none:
+        cells += run.phase_cells(NONE_PERSONA, fams, A8B_NONE_FRAMES, n_orders=4, anti_families=(), exclude_instances=pil)
+        strata["none"] = "none"
+    meta = {"model": "Qwen3-32B", "engine": "hf", "layer_cfg": "", "intervention": "none", "dose": 0.0}
+    tp = run.score_cells(sc, cells, meta, out / f"dist_shard{shard}.parquet", strata=strata, axis=axis, act_layer=32)
+    results_vol.commit()
+    gof = run.gof_gate(sc, random.Random(800 + shard).sample(cells, n_gof), seed=8000 * (shard + 1))
+    summary = {"shard": shard, "personas": personas, "include_none": include_none, "cells": len(cells), "load_s": load_s,
+               "throughput": tp, "gof": run.summarize_gof(gof)}
+    (out / f"summary_shard{shard}.json").write_text(json.dumps(summary, indent=1))
+    (out / f"gof_shard{shard}.json").write_text(json.dumps(gof))
+    results_vol.commit()
+    return summary
+
+
+@app.local_entrypoint()
+def run_phase2c(n_shards: int = 6):
+    import json
+
+    from src.analysis_amend5 import substantive
+
+    subst, stratum = substantive()
+    order = sorted(subst, key=lambda p: (stratum[p], p))
+    shards = [order[k::n_shards] for k in range(n_shards)]
+    args = [(p, k, k == n_shards - 1) for k, p in enumerate(shards)]
+    for s in phase2c_shard.starmap(args):
+        print(json.dumps({k: s[k] for k in ("shard", "personas", "cells", "throughput", "gof")}, default=float))
+
+
+# ------------------------------------------------------------------ Amendment 8 Part C0: sweep recapture (forward pass only)
+@app.function(image=gpu_image, gpu="H100", volumes={WEIGHTS: weights_vol, RESULTS: results_vol}, secrets=[hf_secret],
+              timeout=2 * 3600)
+def c0_capture_remote():
+    """Layers 0-3 on the Amendment 5 sweep cells; all sweep layers (0-3, 4..60, 63, 46-53) on pick cells with order 0,
+    persona paraphrase 0, frame paraphrase 1."""
+    import json
+    import pathlib
+    import time
+
+    import numpy as np
+    import pandas as pd
+
+    from src import run
+    from src.analysis_phase2 import SUBST, pilot_instances
+    from src.prompts import render
+    from src.readout_hf import Item, Scorer
+
+    out = pathlib.Path(f"{RESULTS}/qwen3-32b/amend8_c0")
+    out.mkdir(parents=True, exist_ok=True)
+    allp = run.load_personas()
+    sel = {k: v for k, v in allp.items() if v["stratum"] in SUBST and k != "facilitator"}
+    pil = pilot_instances()
+    fams = ["F1", "F2", "F3", "F4", "F5"]
+    base = run.phase_cells(sel, fams, ["pick", "guess", "coord"], n_orders=4, exclude_instances=pil)
+    sweep_cells = [c for c in base if c.order_id == 0 and c.persona_par == 0 and c.frame_par == 0]
+    pick1 = [c for c in base if c.frame == "pick" and c.order_id == 0 and c.persona_par == 0 and c.frame_par == 1]
+    jobs = {"sweep_l0_3": (sweep_cells, [0, 1, 2, 3]),
+            "pick_par1": (pick1, [0, 1, 2, 3] + SWEEP_LAYERS + [46, 47, 49, 50, 51, 53])}
+    t = time.time()
+    model, tok = run.load_model(f"{WEIGHTS}/Qwen/Qwen3-32B")
+    load_s = time.time() - t
+    sc = Scorer(model, tok, max_batch_tokens=16384)
+    summary = {"load_s": load_s}
+    for name, (cs, layers) in jobs.items():
+        t = time.time()
+        acts = np.zeros((len(cs), len(layers), model.config.hidden_size), np.float16)
+        for s in range(0, len(cs), 2048):
+            part = cs[s: s + 2048]
+            items = [Item(*render(tok, c.system, c.user), c.options, key=i) for i, c in enumerate(part)]
+            for j, r in enumerate(sc.capture(items, layers)):
+                acts[s + j] = np.stack([r[l] for l in layers]).astype(np.float16)
+            print(f"  {name} {s + len(part)}/{len(cs)} cells, {time.time() - t:.0f}s", flush=True)
+        np.save(out / f"{name}_acts.npy", acts)
+        pd.DataFrame([{"persona": c.persona, "frame": c.frame, "family": c.family, "instance_id": c.instance_id,
+                       "order_id": c.order_id, "persona_par": c.persona_par, "frame_par": c.frame_par} for c in cs]
+                     ).to_parquet(out / f"{name}_index.parquet")
+        summary[name] = {"cells": len(cs), "layers": layers, "seconds": time.time() - t}
+    # decision-token identity check for the embedding layer (A11-ii)
+    last_ids = {render(tok, c.system, c.user)[0][-1] for c in sweep_cells[:500] + pick1[:500]}
+    summary["decision_token_ids"] = sorted(last_ids)
+    (out / "summary.json").write_text(json.dumps(summary, indent=1))
+    results_vol.commit()
+    return summary
+
+
+@app.local_entrypoint()
+def c0_capture():
+    import json
+
+    print(json.dumps(c0_capture_remote.remote(), indent=1))
+
+
+# ------------------------------------------------------------------ Amendment 8 Part C2: cross-model baseline (Qwen3-14B)
+@app.function(image=gpu_image, volumes={WEIGHTS: weights_vol}, secrets=[hf_secret], timeout=3600, cpu=4, memory=16384)
+def download_14b():
+    import os
+
+    from huggingface_hub import snapshot_download
+
+    snapshot_download("Qwen/Qwen3-14B", local_dir=f"{WEIGHTS}/Qwen/Qwen3-14B", token=os.environ["HF_TOKEN"],
+                      allow_patterns=["*.json", "*.safetensors", "*.txt", "*.model", "*.jinja"])
+    weights_vol.commit()
+    return "ok"
+
+
+@app.function(image=gpu_image, gpu="H100", volumes={WEIGHTS: weights_vol, RESULTS: results_vol}, secrets=[hf_secret],
+              timeout=2 * 3600)
+def c2_remote(n_gof: int = 24):
+    import json
+    import pathlib
+    import random
+    import time
+
+    from src import run
+    from src.analysis_phase2 import pilot_instances
+    from src.readout_hf import Scorer
+
+    out = pathlib.Path(f"{RESULTS}/qwen3-14b/amend8_c2")
+    out.mkdir(parents=True, exist_ok=True)
+    t = time.time()
+    model, tok = run.load_model(f"{WEIGHTS}/Qwen/Qwen3-14B")
+    load_s = time.time() - t
+    sc = Scorer(model, tok, max_batch_tokens=16384)
+    sel = run.load_personas(["assistant"])
+    cells = run.phase_cells(sel, ["F1", "F2", "F3", "F4", "F5"], ["pick", "coord"], n_orders=4, anti_families=(),
+                            exclude_instances=pilot_instances())
+    meta = {"model": "Qwen3-14B", "engine": "hf", "layer_cfg": "", "intervention": "none", "dose": 0.0}
+    tp = run.score_cells(sc, cells, meta, out / "dist_shard0.parquet", strata={"assistant": "assistant"})
+    gof = run.gof_gate(sc, random.Random(900).sample(cells, n_gof), seed=9000)
+    summary = {"cells": len(cells), "load_s": load_s, "throughput": tp, "gof": run.summarize_gof(gof)}
+    (out / "summary.json").write_text(json.dumps(summary, indent=1))
+    results_vol.commit()
+    return summary
+
+
+@app.local_entrypoint()
+def c2_run():
+    import json
+
+    print(download_14b.remote())
+    print(json.dumps(c2_remote.remote(), indent=1, default=float))
+
+
+# ------------------------------------------------------------------ Amendment 8 Part C1: steering positive controls
+A8C1 = f"{RESULTS}/qwen3-32b/amend8_c1"
+
+
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=4, memory=32768, timeout=3600)
+def c1_prep_remote():
+    """Half-A mean Delta-coord at layer 32 (all cells, 23 personas) and the stored coord residuals of the half-B
+    cells (orders 1-2, paraphrase (0,0)) used as patch targets."""
+    import glob
+    import os
+
+    import numpy as np
+    import pandas as pd
+
+    from src.amend6 import ORDERS, split
+    from src.analysis_amend5 import COLS, substantive
+
+    os.makedirs(A8C1, exist_ok=True)
+    subst, _ = substantive()
+    sp = split()
+    half = {iid: h for f in sp for h in ("A", "B") for iid in sp[f][h]}
+    acc, cnt, tg, keys = {}, {}, [], []
+    for fn in sorted(glob.glob(f"{RESULTS}/qwen3-32b/phase2/dist_shard*.parquet")):
+        d = pd.read_parquet(fn, columns=COLS)
+        d["half"] = d.instance_id.map(half)
+        d = d[d.persona.isin(subst) & d.half.notna()]
+        a = np.load(fn[:-8] + "_l32.npy", mmap_mode="r")
+        for fr in ("pick", "coord"):
+            rows = d[(d.half == "A") & (d.frame == fr)].index.to_numpy()
+            s = np.zeros(a.shape[1])
+            for k in range(0, len(rows), 4096):
+                s += np.asarray(a[rows[k: k + 4096]], np.float64).sum(0)
+            acc[fr] = acc.get(fr, 0.0) + s
+            cnt[fr] = cnt.get(fr, 0) + len(rows)
+        m = d[(d.half == "B") & (d.frame == "coord") & d.order_id.isin(ORDERS) & (d.persona_par == 0) & (d.frame_par == 0)]
+        tg.append(np.asarray(a[m.index.to_numpy()], np.float32))
+        keys += list(zip(m.persona, m.instance_id, m.order_id))
+    dcoord = acc["coord"] / cnt["coord"] - acc["pick"] / cnt["pick"]
+    np.savez(f"{A8C1}/prep.npz", dcoord=dcoord.astype(np.float32), targets=np.concatenate(tg),
+             keys=np.array(["|".join(map(str, k)) for k in keys]))
+    results_vol.commit()
+    return {"norm_dcoord": float(np.linalg.norm(dcoord)), "n_targets": len(keys)}
+
+
+@app.function(image=gpu_image, gpu="H100", volumes={WEIGHTS: weights_vol, RESULTS: results_vol}, secrets=[hf_secret],
+              timeout=3 * 3600)
+def c1_remote():
+    """(i) patch the decision-position residual of half-B pick cells with the stored coord residual of the same cell;
+    (iii) add d x mean Delta-coord (d = 1, 2) and 5 norm-matched random directions (d = 1) at the decision position only;
+    (ii) ablate g_A at every position of layers 20-40 in the coord frame (standard path)."""
+    import json
+    import time
+
+    import numpy as np
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    import torch
+
+    from src import amend6, run
+    from src.prompts import render
+    from src.readout_hf import Item, Scorer
+
+    vec = np.load(f"{A6}/directions.npz")
+    prep = np.load(f"{A8C1}/prep.npz")
+    tindex = {k: i for i, k in enumerate(prep["keys"])}
+    g = torch.tensor(vec["ghat"], device="cuda")
+    dco = torch.tensor(prep["dcoord"], device="cuda")
+    R = torch.tensor(vec["random"], device="cuda")
+    t = time.time()
+    model, tok = run.load_model(f"{WEIGHTS}/Qwen/Qwen3-32B")
+    load_s = time.time() - t
+    sc = Scorer(model, tok, max_batch_tokens=8192)
+    summary = {"load_s": load_s}
+
+    def write(path, recs_iter):
+        writer = None
+        for recs in recs_iter:
+            tbl = pa.Table.from_pylist(recs)
+            writer = writer or pq.ParquetWriter(path, tbl.schema)
+            writer.write_table(tbl)
+        writer.close()
+
+    # (i) + (iii): pick frame, prompt reuse
+    cs = amend6.cells(("pick",), "B")
+    conds = [("patch", 1.0), ("dcoord", 1.0), ("dcoord", 2.0)] + [(f"r{k}", 1.0) for k in range(amend6.N_RANDOM)]
+    nd = float(dco.norm())
+
+    def gen_pick():
+        for s in range(0, len(cs), 1024):
+            part = cs[s: s + 1024]
+            items = [Item(*render(tok, c.system, c.user), c.options, key=s + j) for j, c in enumerate(part)]
+            targets = {s + j: torch.tensor(prep["targets"][tindex[f"{c.persona}|{c.instance_id}|{c.order_id}"]], device="cuda")
+                       for j, c in enumerate(part)}
+            deltas = [(32, targets, "replace"), (32, dco, "decision"), (32, 2 * dco, "decision")] + \
+                     [(32, nd * R[k], "decision") for k in range(amend6.N_RANDOM)]
+            res = sc.score_steered(items, deltas)
+            print(f"  pick {s + len(part)}/{len(cs)}, {time.time() - t0:.0f}s", flush=True)
+            yield [{"persona": c.persona, "frame": c.frame, "family": c.family, "instance_id": c.instance_id,
+                    "order_id": c.order_id, "condition": cd[0], "dose": cd[1], "logprobs": r[k].logprobs.tolist(),
+                    "offmenu": r[k].offmenu} for c, r in zip(part, res) for k, cd in enumerate(conds)]
+
+    t0 = time.time()
+    write(f"{A8C1}/pick_patch_dcoord.parquet", gen_pick())
+    summary["pick_seconds"] = time.time() - t0
+
+    # (ii): coord frame, directional ablation of g over layers 20-40, all positions (standard path)
+    def ablate(mod, inp, out):
+        h = out[0] if isinstance(out, tuple) else out
+        gg = g.to(h.dtype)
+        h = h - (h @ gg)[..., None] * gg
+        return (h, *out[1:]) if isinstance(out, tuple) else h
+
+    cs2 = amend6.cells(("coord",), "B")
+    sc.cache_tag = ("ablate_g_20_40",)
+    sc._prefix_cache.clear()
+    hooks = [model.model.layers[l].register_forward_hook(ablate) for l in range(20, 41)]
+
+    def gen_coord():
+        for s in range(0, len(cs2), 1024):
+            part = cs2[s: s + 1024]
+            res = sc.score([Item(*render(tok, c.system, c.user), c.options) for c in part])
+            print(f"  coord-ablate {s + len(part)}/{len(cs2)}, {time.time() - t0:.0f}s", flush=True)
+            yield [{"persona": c.persona, "frame": c.frame, "family": c.family, "instance_id": c.instance_id,
+                    "order_id": c.order_id, "condition": "ablate_g_20_40", "dose": 1.0, "logprobs": r.logprobs.tolist(),
+                    "offmenu": r.offmenu} for c, r in zip(part, res)]
+
+    t0 = time.time()
+    try:
+        write(f"{A8C1}/coord_ablate.parquet", gen_coord())
+    finally:
+        for h in hooks:
+            h.remove()
+    summary["coord_seconds"] = time.time() - t0
+    with open(f"{A8C1}/summary.json", "w") as f:
+        json.dump(summary, f, indent=1)
+    results_vol.commit()
+    return summary
+
+
+@app.local_entrypoint()
+def c1_run():
+    import json
+
+    print(json.dumps(c1_prep_remote.remote(), indent=1))
+    print(json.dumps(c1_remote.remote(), indent=1))
+
+
+# ------------------------------------------------------------------ Amendment 8 Part A (CPU)
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=8, memory=65536, timeout=4 * 3600)
+def amend8a_remote(old: dict):
+    import json
+
+    from src.analysis_amend8a import analyze
+
+    base = f"{RESULTS}/qwen3-32b"
+    rep = analyze(f"{base}/phase2", f"{base}/phase2b", f"{base}/phase1/dist.parquet", old)
+    with open(f"{base}/amend8_partA_behaviour.json", "w") as f:
+        json.dump(rep, f, default=float)
+    results_vol.commit()
+    return json.loads(json.dumps(rep, default=float))
+
+
+@app.local_entrypoint()
+def amend8a():
+    import json
+    import pathlib
+
+    R = pathlib.Path("results/qwen3-32b")
+    old = {"phase2": json.loads((R / "phase2/analysis.json").read_text()),
+           "amend3": json.loads((R / "amend3_partA.json").read_text())["T1.0"],
+           "amend3_2b": json.loads((R / "amend3_2b.json").read_text())["T1.0"],
+           "amend4": json.loads((R / "amend4.json").read_text())["T1.0"]}
+    rep = amend8a_remote.remote(old)
+    (R / "amend8_partA_behaviour.json").write_text(json.dumps(rep))
+    print("saved")
+
+
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=8, memory=98304, timeout=4 * 3600)
+def amend8a_act_remote(amend5: dict):
+    import json
+
+    from src.analysis_amend8a_act import analyze
+
+    base = f"{RESULTS}/qwen3-32b"
+    rep = analyze(base, amend5)
+    with open(f"{base}/amend8_partA_activations.json", "w") as f:
+        json.dump(rep, f, default=float)
+    results_vol.commit()
+    return json.loads(json.dumps(rep, default=float))
+
+
+@app.local_entrypoint()
+def amend8a_act():
+    import json
+    import pathlib
+
+    R = pathlib.Path("results/qwen3-32b")
+    rep = amend8a_act_remote.remote(json.loads((R / "amend5.json").read_text()))
+    (R / "amend8_partA_activations.json").write_text(json.dumps(rep))
+    print("saved")
+
+
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=8, memory=65536, timeout=4 * 3600)
+def amend8b_remote():
+    import json
+
+    from src.analysis_amend8b import analyze
+
+    base = f"{RESULTS}/qwen3-32b"
+    rep = analyze(base)
+    with open(f"{base}/amend8_partB.json", "w") as f:
+        json.dump(rep, f, default=float)
+    results_vol.commit()
+    return json.loads(json.dumps(rep, default=float))
+
+
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=8, memory=65536, timeout=3 * 3600)
+def amend8c_remote():
+    import json
+
+    from src.analysis_amend8c import analyze
+
+    base = f"{RESULTS}/qwen3-32b"
+    rep = analyze(base, f"{RESULTS}/qwen3-14b/amend8_c2")
+    with open(f"{base}/amend8_partC.json", "w") as f:
+        json.dump(rep, f, default=float)
+    results_vol.commit()
+    return json.loads(json.dumps(rep, default=float))
+
+
+@app.local_entrypoint()
+def amend8bc(part: str = "b"):
+    import json
+    import pathlib
+
+    fn, name = (amend8b_remote, "amend8_partB.json") if part == "b" else (amend8c_remote, "amend8_partC.json")
+    rep = fn.remote()
+    pathlib.Path(f"results/qwen3-32b/{name}").write_text(json.dumps(rep))
+    print("saved")
