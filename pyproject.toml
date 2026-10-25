@@ -1,0 +1,43 @@
+[project]
+name = "schelling"
+version = "0.1.0"
+description = "The Schelling Prior: persona geometry of tacit coordination in LLM agents"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "torch>=2.5,<2.7",
+    "transformers>=4.51,<5",
+    "accelerate",
+    "numpy",
+    "scipy",
+    "pandas",
+    "pyarrow",
+    "pyyaml",
+    "huggingface_hub",
+    "safetensors",
+    "modal",
+    "scikit-learn",
+    "tqdm",
+    "matplotlib",
+    "assistant-axis",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false
+# assistant-axis pulls its whole pipeline stack; we only use axis/steering/capping helpers.
+override-dependencies = [
+    "vllm ; sys_platform == 'never'",
+    "openai ; sys_platform == 'never'",
+    "jupyter ; sys_platform == 'never'",
+    "python-dotenv ; sys_platform == 'never'",
+]
+
+[tool.uv.sources]
+assistant-axis = { git = "https://github.com/safety-research/assistant-axis", rev = "a98961956072224eaf244eb289d6c01700b63795" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["model: tests that load Qwen3-0.6B on CPU"]

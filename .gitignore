@@ -1,0 +1,11 @@
+__pycache__/
+.venv/
+.pytest_cache/
+results/*
+!results/assets/
+*.npy
+*.parquet
+# project brief: kept local only
+private_brief.md
+FINDINGS.md
+PREREG.md

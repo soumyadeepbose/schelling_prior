@@ -1,0 +1,40 @@
+{"instance_id": "F1-000", "family": "F1", "options": ["Friday lunchtime", "Monday morning", "Saturday night", "Sunday night", "Wednesday evening"], "source": "Bardsley2010:TN1", "human": {"pick": [13, 6, 17, 4, 5], "guess": [2, 2, 36, 1, 4], "coordinate": [4, 3, 34, 0, 3]}}
+{"instance_id": "F1-001", "family": "F1", "options": ["Earth", "Mars", "Mercury", "Saturn", "Venus"], "source": "Bardsley2010:TN2", "human": {"pick": [18, 5, 9, 8, 5], "guess": [25, 6, 2, 4, 8], "coordinate": [33, 3, 1, 3, 4]}}
+{"instance_id": "F1-002", "family": "F1", "options": ["Ford", "Mercedes", "Pontiac", "Porsche", "Volkswagen"], "source": "Bardsley2010:TN3", "human": {"pick": [3, 8, 4, 21, 9], "guess": [4, 11, 1, 29, 0], "coordinate": [2, 13, 0, 26, 3]}}
+{"instance_id": "F1-003", "family": "F1", "options": ["plain omelette", "cheese omelette", "ham omelette", "mushroom omelette", "prawn omelette"], "source": "Bardsley2010:TN4", "human": {"pick": [5, 19, 6, 8, 7], "guess": [9, 19, 11, 2, 4], "coordinate": [7, 21, 3, 7, 6]}}
+{"instance_id": "F1-004", "family": "F1", "options": ["1", "2", "7", "10", "15"], "source": "Bardsley2010:TN5", "human": {"pick": [4, 5, 9, 11, 16], "guess": [3, 0, 16, 7, 19], "coordinate": [5, 2, 6, 8, 23]}}
+{"instance_id": "F1-005", "family": "F1", "options": ["stool", "deck chair", "dining chair", "easy chair", "rocking chair"], "source": "Bardsley2010:TN6", "human": {"pick": [4, 11, 4, 10, 16], "guess": [3, 8, 2, 24, 8], "coordinate": [5, 7, 1, 15, 16]}}
+{"instance_id": "F1-006", "family": "F1", "options": ["Ontario", "Colorado", "Florida", "Louisiana", "Nevada"], "source": "Bardsley2010:TN7", "human": {"pick": [9, 8, 18, 4, 6], "guess": [3, 6, 33, 0, 3], "coordinate": [4, 5, 33, 0, 2]}}
+{"instance_id": "F1-007", "family": "F1", "options": ["sitting", "jogging", "sunbathing", "swimming", "walking"], "source": "Bardsley2010:TN8", "human": {"pick": [3, 11, 13, 11, 7], "guess": [2, 4, 30, 5, 4], "coordinate": [2, 4, 26, 7, 5]}}
+{"instance_id": "F1-008", "family": "F1", "options": ["2000", "1978", "1979", "1980", "1981"], "source": "Bardsley2010:TN9", "human": {"pick": [13, 3, 3, 11, 15], "guess": [23, 1, 1, 7, 13], "coordinate": [27, 2, 2, 5, 8]}}
+{"instance_id": "F1-009", "family": "F1", "options": ["John", "David", "Michael", "Robert", "Steven"], "source": "Bardsley2010:TN10", "human": {"pick": [9, 11, 9, 9, 7], "guess": [10, 8, 13, 6, 8], "coordinate": [14, 9, 12, 5, 4]}}
+{"instance_id": "F1-010", "family": "F1", "options": ["win nothing", "win champagne", "win chocolate", "win money", "win trophy"], "source": "Bardsley2010:TN11", "human": {"pick": [4, 8, 6, 22, 5], "guess": [2, 4, 1, 38, 0], "coordinate": [1, 1, 0, 41, 1]}}
+{"instance_id": "F1-011", "family": "F1", "options": ["red", "blue", "green", "orange", "purple"], "source": "Bardsley2010:TN12", "human": {"pick": [9, 17, 7, 3, 9], "guess": [15, 16, 3, 1, 10], "coordinate": [8, 23, 4, 3, 6]}}
+{"instance_id": "F1-012", "family": "F1", "options": ["carrot juice", "apple juice", "grapefruit juice", "mango juice", "pineapple juice"], "source": "Bardsley2010:TN13", "human": {"pick": [5, 10, 7, 12, 11], "guess": [6, 19, 4, 7, 9], "coordinate": [2, 29, 3, 5, 5]}}
+{"instance_id": "F1-013", "family": "F1", "options": ["Calais", "Berlin", "Paris", "Prague", "Rome"], "source": "Bardsley2010:TN14", "human": {"pick": [5, 2, 10, 8, 20], "guess": [1, 3, 23, 7, 11], "coordinate": [4, 1, 27, 2, 10]}}
+{"instance_id": "F1-014", "family": "F1", "options": ["apple", "banana", "cherry", "mango", "pear"], "source": "new"}
+{"instance_id": "F1-015", "family": "F1", "options": ["dog", "cat", "horse", "rabbit", "goat"], "source": "new"}
+{"instance_id": "F1-016", "family": "F1", "options": ["piano", "guitar", "violin", "drum", "flute"], "source": "new"}
+{"instance_id": "F1-017", "family": "F1", "options": ["January", "April", "July", "October", "December"], "source": "new"}
+{"instance_id": "F1-018", "family": "F1", "options": ["coffee", "tea", "milk", "juice", "soda"], "source": "new"}
+{"instance_id": "F1-019", "family": "F1", "options": ["rose", "tulip", "daisy", "lily", "orchid"], "source": "new"}
+{"instance_id": "F1-020", "family": "F1", "options": ["eagle", "sparrow", "owl", "parrot", "robin"], "source": "new"}
+{"instance_id": "F1-021", "family": "F1", "options": ["circle", "square", "triangle", "star", "hexagon"], "source": "new"}
+{"instance_id": "F1-022", "family": "F1", "options": ["potato", "carrot", "onion", "broccoli", "spinach"], "source": "new"}
+{"instance_id": "F1-023", "family": "F1", "options": ["soccer", "basketball", "tennis", "golf", "baseball"], "source": "new"}
+{"instance_id": "F1-024", "family": "F1", "options": ["sunny", "rainy", "cloudy", "snowy", "windy"], "source": "new"}
+{"instance_id": "F1-025", "family": "F1", "options": ["oak", "pine", "maple", "birch", "willow"], "source": "new"}
+{"instance_id": "F1-026", "family": "F1", "options": ["gold", "silver", "copper", "iron", "tin"], "source": "new"}
+{"instance_id": "F1-027", "family": "F1", "options": ["cake", "ice cream", "cookie", "pie", "pudding"], "source": "new"}
+{"instance_id": "F1-028", "family": "F1", "options": ["doctor", "teacher", "farmer", "pilot", "chef"], "source": "new"}
+{"instance_id": "F1-029", "family": "F1", "options": ["table", "chair", "sofa", "bed", "shelf"], "source": "new"}
+{"instance_id": "F1-030", "family": "F1", "options": ["shirt", "jacket", "hat", "scarf", "gloves"], "source": "new"}
+{"instance_id": "F1-031", "family": "F1", "options": ["Pacific", "Atlantic", "Indian", "Arctic", "Southern"], "source": "new"}
+{"instance_id": "F1-032", "family": "F1", "options": ["France", "Japan", "Brazil", "Canada", "Egypt"], "source": "new"}
+{"instance_id": "F1-033", "family": "F1", "options": ["car", "bus", "train", "boat", "plane"], "source": "new"}
+{"instance_id": "F1-034", "family": "F1", "options": ["happy", "calm", "curious", "proud", "hopeful"], "source": "new"}
+{"instance_id": "F1-035", "family": "F1", "options": ["hammer", "wrench", "saw", "drill", "screwdriver"], "source": "new"}
+{"instance_id": "F1-036", "family": "F1", "options": ["salt", "pepper", "cinnamon", "ginger", "paprika"], "source": "new"}
+{"instance_id": "F1-037", "family": "F1", "options": ["house", "castle", "tower", "barn", "church"], "source": "new"}
+{"instance_id": "F1-038", "family": "F1", "options": ["river", "lake", "sea", "pond", "stream"], "source": "new"}
+{"instance_id": "F1-039", "family": "F1", "options": ["dawn", "morning", "noon", "evening", "midnight"], "source": "new"}

@@ -1,0 +1,40 @@
+{"instance_id": "F4-000", "family": "F4", "options": ["grijs", "indigo", "karmozijn", "magenta", "turkoois"], "odd_index": 0, "source": "Bardsley2010:TA1", "human": {"pick": [11, 12, 9, 10, 11], "guess": [17, 8, 9, 11, 7], "coordinate": [35, 8, 5, 1, 7]}}
+{"instance_id": "F4-001", "family": "F4", "options": ["Ford", "Ferrari", "Jaguar", "Porsche"], "odd_index": 0, "source": "Bardsley2010:TA2", "human": {"pick": [10, 13, 20, 10], "guess": [11, 22, 7, 12], "coordinate": [31, 11, 5, 9]}}
+{"instance_id": "F4-002", "family": "F4", "options": ["Mannheim", "Berlin", "Brussels", "Lisbon", "Madrid"], "odd_index": 0, "source": "Bardsley2010:TA3", "human": {"pick": [12, 3, 8, 15, 15], "guess": [9, 2, 13, 8, 20], "coordinate": [25, 4, 9, 7, 11]}}
+{"instance_id": "F4-003", "family": "F4", "options": ["peanut", "almond", "cashew", "walnut"], "odd_index": 0, "source": "Bardsley2010:TA4", "human": {"pick": [13, 13, 20, 7], "guess": [13, 20, 14, 5], "coordinate": [12, 18, 15, 11]}}
+{"instance_id": "F4-004", "family": "F4", "options": ["glass", "diamond", "emerald", "sapphire"], "odd_index": 0, "source": "Bardsley2010:TA5", "human": {"pick": [11, 24, 7, 11], "guess": [14, 28, 8, 2], "coordinate": [30, 21, 3, 2]}}
+{"instance_id": "F4-005", "family": "F4", "options": ["plastic", "chrome", "copper", "iron", "steel"], "odd_index": 0, "source": "Bardsley2010:TA6", "human": {"pick": [15, 11, 9, 11, 7], "guess": [16, 11, 10, 6, 9], "coordinate": [36, 7, 2, 6, 5]}}
+{"instance_id": "F4-006", "family": "F4", "options": ["bread", "curry", "pizza", "steak"], "odd_index": 0, "source": "Bardsley2010:TA7", "human": {"pick": [8, 12, 10, 23], "guess": [6, 9, 16, 21], "coordinate": [8, 23, 17, 8]}}
+{"instance_id": "F4-007", "family": "F4", "options": ["water", "beer", "sherry", "whisky", "wine"], "odd_index": 0, "source": "Bardsley2010:TA8", "human": {"pick": [20, 13, 4, 6, 10], "guess": [15, 26, 1, 6, 4], "coordinate": [38, 11, 0, 5, 2]}}
+{"instance_id": "F4-008", "family": "F4", "options": ["Carlsberg", "Corsendonk", "Grimbergen", "Rochefort", "Westmalle"], "odd_index": 0, "source": "Bardsley2010:TA9", "human": {"pick": [25, 5, 8, 9, 6], "guess": [23, 3, 13, 4, 9], "coordinate": [37, 2, 2, 11, 4]}}
+{"instance_id": "F4-009", "family": "F4", "options": ["frog", "leopard", "panther", "tiger"], "odd_index": 0, "source": "Bardsley2010:TA10", "human": {"pick": [17, 11, 7, 18], "guess": [17, 11, 4, 20], "coordinate": [41, 5, 5, 5]}}
+{"instance_id": "F4-010", "family": "F4", "options": ["bicycle", "aeroplane", "helicopter", "hovercraft"], "odd_index": 0, "source": "Bardsley2010:TA11", "human": {"pick": [18, 19, 6, 10], "guess": [18, 18, 6, 10], "coordinate": [37, 15, 2, 2]}}
+{"instance_id": "F4-011", "family": "F4", "options": ["chess", "football", "squash", "tennis", "volleyball"], "odd_index": 0, "source": "Bardsley2010:TA12", "human": {"pick": [18, 11, 5, 16, 3], "guess": [15, 30, 1, 6, 0], "coordinate": [36, 14, 0, 3, 3]}}
+{"instance_id": "F4-012", "family": "F4", "options": ["Bern", "Barbados", "Florida", "Honolulu"], "odd_index": 0, "source": "Bardsley2010:TA13", "human": {"pick": [11, 13, 21, 8], "guess": [12, 10, 17, 13], "coordinate": [29, 4, 12, 11]}}
+{"instance_id": "F4-013", "family": "F4", "options": ["sitting", "jogging", "running", "walking"], "odd_index": 0, "source": "Bardsley2010:TA14", "human": {"pick": [16, 6, 20, 11], "guess": [21, 5, 15, 11], "coordinate": [39, 5, 10, 2]}}
+{"instance_id": "F4-014", "family": "F4", "options": ["whale", "trout", "salmon", "tuna", "cod"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-015", "family": "F4", "options": ["penguin", "robin", "sparrow", "finch", "swallow"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-016", "family": "F4", "options": ["piano", "trumpet", "trombone", "tuba", "horn"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-017", "family": "F4", "options": ["Mars", "Paris", "London", "Rome", "Madrid"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-018", "family": "F4", "options": ["Tuesday", "March", "June", "August", "October"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-019", "family": "F4", "options": ["square", "red", "blue", "green", "yellow"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-020", "family": "F4", "options": ["hammer", "apple", "pear", "plum", "peach"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-021", "family": "F4", "options": ["rose", "oak", "pine", "elm", "birch"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-022", "family": "F4", "options": ["violin", "drum", "cymbal", "tambourine", "gong"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-023", "family": "F4", "options": ["bat", "eagle", "hawk", "falcon", "owl"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-024", "family": "F4", "options": ["glass", "oak", "maple", "cedar", "ash"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-025", "family": "F4", "options": ["triangle", "circle", "oval", "ring", "sphere"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-026", "family": "F4", "options": ["train", "car", "truck", "bus", "van"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-027", "family": "F4", "options": ["milk", "cola", "lemonade", "ginger ale", "root beer"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-028", "family": "F4", "options": ["chess", "poker", "blackjack", "bridge", "rummy"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-029", "family": "F4", "options": ["tulip", "apple", "cherry", "plum", "lemon"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-030", "family": "F4", "options": ["snake", "dog", "cat", "horse", "cow"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-031", "family": "F4", "options": ["Antarctica", "France", "Spain", "Italy", "Germany"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-032", "family": "F4", "options": ["ruby", "granite", "marble", "slate", "limestone"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-033", "family": "F4", "options": ["canoe", "jet", "helicopter", "glider", "airship"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-034", "family": "F4", "options": ["lime", "crimson", "scarlet", "maroon", "cherry"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-035", "family": "F4", "options": ["Shakespeare", "Mozart", "Bach", "Beethoven", "Chopin"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-036", "family": "F4", "options": ["Everest", "Nile", "Amazon", "Danube", "Thames"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-037", "family": "F4", "options": ["shark", "dolphin", "whale", "seal", "otter"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-038", "family": "F4", "options": ["seven", "dog", "cat", "cow", "pig"], "odd_index": 0, "source": "new"}
+{"instance_id": "F4-039", "family": "F4", "options": ["winter", "Monday", "Wednesday", "Friday", "Sunday"], "odd_index": 0, "source": "new"}

@@ -1,0 +1,20 @@
+{"instance_id": "F1b-000", "family": "F1b", "options": ["lentil", "quinoa", "barley", "millet", "sorghum", "rye", "spelt", "teff", "farro", "buckwheat"], "source": "new:fallback"}
+{"instance_id": "F1b-001", "family": "F1b", "options": ["ochre", "taupe", "mauve", "sienna", "umber", "cerise", "celadon", "puce", "sepia", "vermilion"], "source": "new:fallback"}
+{"instance_id": "F1b-002", "family": "F1b", "options": ["Bergen", "Ghent", "Porto", "Graz", "Lyon", "Turin", "Malmo", "Leipzig", "Bilbao", "Utrecht", "Krakow"], "source": "new:fallback"}
+{"instance_id": "F1b-003", "family": "F1b", "options": ["juniper", "hazel", "rowan", "alder", "hornbeam", "linden", "sycamore", "larch", "yew", "poplar"], "source": "new:fallback"}
+{"instance_id": "F1b-004", "family": "F1b", "options": ["bassoon", "oboe", "piccolo", "clarinet", "cornet", "dulcimer", "lute", "zither", "harp", "mandolin", "banjo"], "source": "new:fallback"}
+{"instance_id": "F1b-005", "family": "F1b", "options": ["parsnip", "turnip", "radish", "kohlrabi", "leek", "fennel", "celeriac", "okra", "chard", "rutabaga"], "source": "new:fallback"}
+{"instance_id": "F1b-006", "family": "F1b", "options": ["heron", "egret", "plover", "curlew", "lapwing", "dunlin", "godwit", "sandpiper", "avocet", "stilt"], "source": "new:fallback"}
+{"instance_id": "F1b-007", "family": "F1b", "options": ["walnut", "pecan", "hazelnut", "macadamia", "pistachio", "chestnut", "brazil nut", "pine nut", "cashew", "almond"], "source": "new:fallback"}
+{"instance_id": "F1b-008", "family": "F1b", "options": ["basil", "thyme", "sage", "oregano", "dill", "tarragon", "chervil", "marjoram", "lovage", "sorrel", "savory"], "source": "new:fallback"}
+{"instance_id": "F1b-009", "family": "F1b", "options": ["gecko", "iguana", "skink", "monitor", "chameleon", "anole", "agama", "basilisk", "tegu", "uromastyx"], "source": "new:fallback"}
+{"instance_id": "F1b-010", "family": "F1b", "options": ["fjord", "mesa", "butte", "atoll", "delta", "moraine", "cirque", "tor", "lagoon", "isthmus"], "source": "new:fallback"}
+{"instance_id": "F1b-011", "family": "F1b", "options": ["velvet", "linen", "tweed", "denim", "satin", "chiffon", "corduroy", "flannel", "muslin", "gingham", "jersey"], "source": "new:fallback"}
+{"instance_id": "F1b-012", "family": "F1b", "options": ["quartz", "feldspar", "mica", "calcite", "gypsum", "talc", "fluorite", "apatite", "pyrite", "garnet"], "source": "new:fallback"}
+{"instance_id": "F1b-013", "family": "F1b", "options": ["sloop", "ketch", "yawl", "schooner", "dinghy", "catamaran", "junk", "dhow", "felucca", "trawler"], "source": "new:fallback"}
+{"instance_id": "F1b-014", "family": "F1b", "options": ["fig", "date", "quince", "guava", "lychee", "persimmon", "kumquat", "papaya", "loquat", "medlar", "tamarind"], "source": "new:fallback"}
+{"instance_id": "F1b-015", "family": "F1b", "options": ["minnow", "perch", "pike", "carp", "bream", "roach", "tench", "chub", "dace", "rudd"], "source": "new:fallback"}
+{"instance_id": "F1b-016", "family": "F1b", "options": ["rondo", "fugue", "sonata", "etude", "nocturne", "prelude", "toccata", "minuet", "gavotte", "bolero"], "source": "new:fallback"}
+{"instance_id": "F1b-017", "family": "F1b", "options": ["cumin", "cardamom", "clove", "nutmeg", "mace", "anise", "fenugreek", "sumac", "turmeric", "allspice", "saffron"], "source": "new:fallback"}
+{"instance_id": "F1b-018", "family": "F1b", "options": ["zinnia", "aster", "dahlia", "peony", "freesia", "phlox", "salvia", "begonia", "lobelia", "verbena"], "source": "new:fallback"}
+{"instance_id": "F1b-019", "family": "F1b", "options": ["lynx", "ocelot", "serval", "caracal", "margay", "bobcat", "puma", "jaguarundi", "cheetah", "leopard"], "source": "new:fallback"}
