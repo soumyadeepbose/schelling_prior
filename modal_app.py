@@ -1864,3 +1864,30 @@ def a9_addon():
 
     pathlib.Path("results/qwen3-32b/amend9_addon.json").write_text(json.dumps(a9_addon_remote.remote()))
     print("saved")
+
+
+# ------------------------------------------------------------------ PREREG Amendment 10 (cached readouts, CPU only)
+@app.function(image=gpu_image, volumes={RESULTS: results_vol}, cpu=8, memory=65536, timeout=2 * 3600)
+def amend10_remote():
+    import json
+    import time
+
+    from src.analysis_amend10 import analyze
+
+    t = time.time()
+    base = f"{RESULTS}/qwen3-32b"
+    rep = analyze(base)
+    rep["cpu_seconds"] = time.time() - t
+    with open(f"{base}/amend10_cached.json", "w") as f:
+        json.dump(rep, f, default=float)
+    results_vol.commit()
+    return json.loads(json.dumps(rep, default=float))
+
+
+@app.local_entrypoint()
+def amend10():
+    import json
+    import pathlib
+
+    pathlib.Path("results/qwen3-32b/amend10_cached.json").write_text(json.dumps(amend10_remote.remote()))
+    print("saved")
